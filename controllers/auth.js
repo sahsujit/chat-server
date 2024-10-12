@@ -2,6 +2,8 @@ const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const filterObj = require("../utils/filterObj");
 const otpGenerator = require("otp-generator")
+const crypto = require("crypto");
+const { promisify } = require("util");
 require("dotenv").config()
 
 const signToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET)
@@ -206,3 +208,136 @@ exports.login = async (req, res, next) => {
         })
     }
 }
+
+
+
+// Protect
+exports.protect = async (req, res, next) => {
+    // 1) Getting token and check if it's there
+    let token;
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    } else if (req.cookies.jwt) {
+      token = req.cookies.jwt;
+    }
+  
+    if (!token) {
+      return res.status(401).json({
+        message: "You are not logged in! Please log in to get access.",
+      });
+    }
+    // 2) Verification of token
+    const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  
+    console.log(decoded);
+  
+    // 3) Check if user still exists
+  
+    const this_user = await User.findById(decoded.userId);
+    if (!this_user) {
+      return res.status(401).json({
+        message: "The user belonging to this token does no longer exists.",
+      });
+    }
+    // 4) Check if user changed password after the token was issued
+    if (this_user.changedPasswordAfter(decoded.iat)) {
+      return res.status(401).json({
+        message: "User recently changed password! Please log in again.",
+      });
+    }
+  
+    // GRANT ACCESS TO PROTECTED ROUTE
+    req.user = this_user;
+    next();
+  };
+
+
+exports.forgotPassword = async (req, res, next) => {
+    try {
+        const user = await User.findOne({ email: req.body.email })
+        if (!user) {
+            return res.status(404).json({
+                status: "error",
+                message: "There is no user with email address.",
+            });
+        }
+
+        // 2) Generate the random reset token
+        const resetToken = user.createPasswordResetToken();
+
+        await user.save({ validateBeforeSave: false });
+
+        try {
+            const resetURL = `http://localhost:3000/auth/new-password?token=${resetToken}`;
+
+            //Todo send mail
+
+            res.status(200).json({
+                status: "success",
+                message: "Token sent to email!",
+            });
+
+        } catch (err) {
+            user.passwordResetToken = undefined;
+            user.passwordResetExpires = undefined;
+            await user.save({ validateBeforeSave: false });
+
+            return res.status(500).json({
+                message: "There was an error sending the email. Try again later!",
+            });
+        }
+
+    } catch (err) {
+        res.status(500).json({
+            message: err.message
+        })
+    }
+}
+
+
+
+exports.resetPassword = async (req, res, next) => {
+    try {
+
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(req.body.token)
+            .digest("hex");
+
+        const user = await User.findOne({
+            passwordResetToken: hashedToken,
+            passwordResetExpires: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                status: "error",
+                message: "Token is Invalid or Expired",
+            });
+        }
+        user.password = req.body.password;
+        user.passwordConfirm = req.body.passwordConfirm;
+        user.passwordResetToken = undefined;
+        user.passwordResetExpires = undefined;
+        await user.save();
+
+        const token = signToken(user._id);
+
+        res.status(200).json({
+            status: "success",
+            message: "Password Reseted Successfully",
+            token,
+        });
+
+
+
+    } catch (err) {
+        res.status(500).json({
+            message: err.message
+        })
+    }
+}
+
