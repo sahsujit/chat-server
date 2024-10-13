@@ -2,6 +2,7 @@ const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const filterObj = require("../utils/filterObj");
 const otpGenerator = require("otp-generator")
+const mailService = require("../services/mailer")
 const crypto = require("crypto");
 const { promisify } = require("util");
 require("dotenv").config()
@@ -31,7 +32,13 @@ exports.sendOTP = async (req, res, next) => {
 
 
         //   Todo : send mail
-
+        mailService.sendEmail({
+            from: "sah.sujit1388@gmail.com",
+            to: user.email,
+            subject: "Verification OTP",
+            html: otp(user.firstName, new_otp),
+            attachments: [],
+          });
 
         res.status(200).json({
             status: "success",
@@ -274,6 +281,15 @@ exports.forgotPassword = async (req, res, next) => {
             const resetURL = `http://localhost:3000/auth/new-password?token=${resetToken}`;
 
             //Todo send mail
+
+
+    mailService.sendEmail({
+        from: "sah.sujit1388@gmail.com",
+        to: user.email,
+        subject: "Reset Password",
+        html: resetPassword(user.firstName, resetURL),
+        attachments: [],
+      });
 
             res.status(200).json({
                 status: "success",
