@@ -37,7 +37,7 @@ server.listen(port, ()=>{
 })
 
 process.on("unhandledRejection",()=>{
-    console.log(err);
+   
     server.close(()=>{
         process.exit(1);
     })

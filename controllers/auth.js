@@ -5,6 +5,8 @@ const otpGenerator = require("otp-generator")
 const mailService = require("../services/mailer")
 const crypto = require("crypto");
 const { promisify } = require("util");
+const otp = require("../Templates/Mail/otp");
+const resetPassword = require("../Templates/Mail/resetPassword");
 require("dotenv").config()
 
 const signToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET)
@@ -36,13 +38,14 @@ exports.sendOTP = async (req, res, next) => {
             from: "sah.sujit1388@gmail.com",
             to: user.email,
             subject: "Verification OTP",
-            html: otp(user.firstName, new_otp),
+            html:otp(user.firstName, new_otp),
             attachments: [],
           });
 
         res.status(200).json({
             status: "success",
             message: "OTP Sent Successfully!",
+            data:new_otp
         });
     } catch (err) {
         res.status(500).json({
@@ -157,6 +160,7 @@ exports.register = async (req, res, next) => {
             next();
         }
 
+      
 
     } catch (err) {
         res.status(500).json({
@@ -280,6 +284,8 @@ exports.forgotPassword = async (req, res, next) => {
         try {
             const resetURL = `http://localhost:3000/auth/new-password?token=${resetToken}`;
 
+
+            console.log("resetToken:", resetToken)
             //Todo send mail
 
 
@@ -351,6 +357,7 @@ exports.resetPassword = async (req, res, next) => {
 
 
     } catch (err) {
+        console.log(err)
         res.status(500).json({
             message: err.message
         })
