@@ -6,7 +6,9 @@ const mailService = require("../services/mailer")
 const crypto = require("crypto");
 const { promisify } = require("util");
 const otp = require("../Templates/Mail/otp");
-const resetPassword = require("../Templates/Mail/resetPassword");
+const emailTemplate = require("../Templates/Mail/emailVerificationTemplate")
+// const resetPassword = require("../Templates/Mail/resetPassword");
+const mailSender = require("../services/mailer");
 require("dotenv").config()
 
 const signToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET)
@@ -34,13 +36,17 @@ exports.sendOTP = async (req, res, next) => {
 
 
         //   Todo : send mail
-        mailService.sendEmail({
-            from: "sah.sujit1388@gmail.com",
-            to: user.email,
-            subject: "Verification OTP",
-            html:otp(user.firstName, new_otp),
-            attachments: [],
-          });
+        // mailService.sendEmail({
+        //     from: "sah.sujit1388@gmail.com",
+        //     to: user.email,
+        //     subject: "Verification OTP",
+        //     html:otp(user.firstName, new_otp),
+        //     attachments: [],
+        //   });
+
+          await mailSender(user.email,
+            "Verification Email From Chat App", 
+            emailTemplate(new_otp));
 
         res.status(200).json({
             status: "success",
@@ -289,13 +295,17 @@ exports.forgotPassword = async (req, res, next) => {
             //Todo send mail
 
 
-    mailService.sendEmail({
-        from: "sah.sujit1388@gmail.com",
-        to: user.email,
-        subject: "Reset Password",
-        html: resetPassword(user.firstName, resetURL),
-        attachments: [],
-      });
+    // mailService.sendEmail({
+    //     from: "sah.sujit1388@gmail.com",
+    //     to: user.email,
+    //     subject: "Reset Password",
+    //     html: resetPassword(user.firstName, resetURL),
+    //     attachments: [],
+    //   });
+      await mailSender(user.email,
+        "Password Reset Link",
+        `Password Reset Link : ${resetURL}`);
+
 
             res.status(200).json({
                 status: "success",
