@@ -41,6 +41,7 @@ server.listen(port, () => {
 });
 
 io.on("connection", async (socket) => {
+  console.log(JSON.stringify(socket.handshake.query));
   const user_id = socket.handshake.query["user_id"];
 
   if (user_id !== null && Boolean(user_id)) {
@@ -69,7 +70,46 @@ io.on("connection", async (socket) => {
       message: "Request Sent successfully!",
     });
   });
+
+
+  socket.on("accept_request", async(data)=>{
+    console.log(data);
+    const request_doc = await FriendRequest.findById(data.request_id);
+
+    console.log(request_doc);
+
+    const sender = await User.findById(request_doc.sender);
+    const receiver = await User.findById(request_doc.recipient);
+
+    sender.friends.push(request_doc.recipient);
+    receiver.friends.push(request_doc.sender);
+
+
+    await receiver.save({ new: true, validateModifiedOnly: true });
+    await sender.save({ new: true, validateModifiedOnly: true });
+
+    await FriendRequest.findByIdAndDelete(data.request_id);
+
+    // delete this request doc
+    // emit event to both of them
+
+    // emit event request accepted to both
+    io.to(sender?.socket_id).emit("request_accepted", {
+      message: "Friend Request Accepted",
+    });
+    io.to(receiver?.socket_id).emit("request_accepted", {
+      message: "Friend Request Accepted",
+    });
+  })
+
+socket.to("end", function(){
+  console.log("Closing Connection");
+  socket.disconnect(0)
+})
+  
 });
+
+
 
 process.on("unhandledRejection", () => {
   server.close(() => {
