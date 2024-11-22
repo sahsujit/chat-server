@@ -48,6 +48,7 @@ io.on("connection", async (socket) => {
     try {
       User.findByIdAndUpdate(user_id, {
         socket_id: socket.id,
+        status:"Online"
       });
     } catch (err) {
       console.log(err);
@@ -102,10 +103,45 @@ io.on("connection", async (socket) => {
     });
   })
 
-socket.to("end", function(){
-  console.log("Closing Connection");
-  socket.disconnect(0)
-})
+
+  // handle Media/Document Message
+  socket.on("file_message", (data) => {
+    console.log("Received message:", data);
+
+    // data: {to, from, text, file}
+
+    // Get the file extension
+    const fileExtension = path.extname(data.file.name);
+
+    // Generate a unique filename
+    const filename = `${Date.now()}_${Math.floor(
+      Math.random() * 10000
+    )}${fileExtension}`;
+
+    // upload file to AWS s3
+
+    // create a new conversation if its dosent exists yet or add a new message to existing conversation
+
+    // save to db
+
+    // emit incoming_message -> to user
+
+    // emit outgoing_message -> from user
+  });
+
+
+  socket.on("end", async (data) => {
+    // Find user by ID and set status as offline
+
+    if (data.user_id) {
+      await User.findByIdAndUpdate(data.user_id, { status: "Offline" });
+    }
+
+    // broadcast to all conversation rooms of this user that this user is offline (disconnected)
+
+    console.log("closing connection");
+    socket.disconnect(0);
+  });
   
 });
 
