@@ -11,6 +11,7 @@ process.on("uncaughtException", (err) => {
 const http = require("http");
 const User = require("./models/user");
 const FriendRequest = require("./models/friendRequest");
+const OneToOneMessage  = require("./models/OneToOneMessage")
 
 const server = http.createServer(app);
 require("dotenv").config();
@@ -102,6 +103,20 @@ io.on("connection", async (socket) => {
       message: "Friend Request Accepted",
     });
   })
+
+
+
+  socket.on("get_direct_conversations", async ({ user_id }, callback) => {
+    const existing_conversations = await OneToOneMessage.find({
+      participants: { $all: [user_id] },
+    }).populate("participants", "firstName lastName avatar _id email status");
+
+    // db.books.find({ authors: { $elemMatch: { name: "John Smith" } } })
+
+    console.log(existing_conversations);
+
+    callback(existing_conversations);
+  });
 
 
   // handle Media/Document Message
